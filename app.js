@@ -62,23 +62,30 @@ app.get("/register", async (req, res) => {
 app.post("/register", async (req, res) => {
   const { firstname, lastname, skin_color, height, email, location, gender, password } = req.body;
   try {
-    let checkUserQuery = `SELECT * FROM models WHERE email = '${email}'`;
-    let checkInDataBase = await db.get(checkUserQuery);
-    if (checkInDataBase === undefined) {
+    let checkUserQuery = `SELECT * FROM models WHERE email = ?`;
+    let checkInDataBase = await db.get(checkUserQuery, [email]);
+
+    if (!checkInDataBase) {
       if (password.length < 5) {
-        res.status(400).send("Password is too short");
-      } else {
-        let hashedPassword = await bcrypt.hash(password, 10);
-        let createNewModel = `INSERT INTO models (firstname, lastname, skin_color, height, email, location, gender, password)
-        VALUES ('${firstname}', '${lastname}', '${skin_color}', ${height}, '${email}', '${location}', '${gender}', '${hashedPassword}')`;
-        await db.run(createNewModel);
-        res.status(200).send("Model registered successfully");
+        return res.status(400).json({ message: "Password is too short" });
       }
+
+      let hashedPassword = await bcrypt.hash(password, 10);
+      let createNewModel = `
+        INSERT INTO models (firstname, lastname, skin_color, height, email, location, gender, password)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await db.run(createNewModel, [firstname, lastname, skin_color, height, email, location, gender, hashedPassword]);
+
+      // ✅ Success message after registration
+      return res.status(200).json({
+        message: "Congratulations! Your registration is accepted into the Modelie world. Our Admin will reach out to you for an interview to join our team of models for the next fashion week in Paris."
+      });
     } else {
-      res.status(400).send("Model already exists");
+      return res.status(400).json({ message: "Model already exists" });
     }
   } catch (error) {
-    res.status(500).send({ error: "Failed to register model." });
+    return res.status(500).json({ error: "Failed to register model." });
   }
 });
 
