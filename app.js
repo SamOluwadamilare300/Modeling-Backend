@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const app = express();
 app.use(express.json());
+const cors = require("cors");
 
 let db = null;
 const port = 3000;
@@ -17,6 +18,8 @@ const connectDatabaseWithServer = async () => {
       filename: dbFilePath,
       driver: sqlite3.Database,
     });
+
+    app.use(cors());
 
     // Create models table if it doesn't exist
     await db.run(`
