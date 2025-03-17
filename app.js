@@ -5,101 +5,129 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const app = express();
 app.use(express.json());
+
 let db = null;
 const port = 3000;
 const dbFilePath = path.join(__dirname, "./userData.db");
 
-const connectDbWithServer = async () => {
+// Connect to SQLite database and create the table if it doesn't exist
+const connectDatabaseWithServer = async () => {
   try {
     db = await open({
       filename: dbFilePath,
       driver: sqlite3.Database,
     });
+
+    // Create models table if it doesn't exist
+    await db.run(`
+      CREATE TABLE IF NOT EXISTS models (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        firstname TEXT NOT NULL,
+        lastname TEXT NOT NULL,
+        skin_color TEXT NOT NULL,
+        height INTEGER NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        location TEXT NOT NULL,
+        gender TEXT NOT NULL,
+        password TEXT NOT NULL
+      )
+    `);
+
     app.listen(port, () => {
-      console.log(`Server Started..!`);
+      console.log(`Server is running on http://localhost:${port}`);
+      console.log("Connected to the SQLite database.");
     });
   } catch (error) {
-    console.log(`Database Connection Failed : ${error.message}`);
+    console.error(`Failed to connect to the database: ${error.message}`);
   }
 };
 
-connectDbWithServer();
+connectDatabaseWithServer();
 
+// Endpoint to get all users (for testing purposes)
 app.get("/register", async (req, res) => {
-  let getUserQuery = `SELECT * FROM user`;
-  let dbResponse = await db.all(getUserQuery);
-  res.send(dbResponse);
+  try {
+    let getUserQuery = `SELECT * FROM models`;
+    let dbResponse = await db.all(getUserQuery);
+    res.send(dbResponse);
+  } catch (error) {
+    res.status(500).send({ error: "Failed to retrieve users." });
+  }
 });
 
+// Endpoint to register a new model
 app.post("/register", async (req, res) => {
-  const { username, name, password, gender, location } = req.body;
-  let checkUserQuery = `SELECT * FROM user WHERE username = '${username}'`;
-  let checkInDataBase = await db.get(checkUserQuery);
-  if (checkInDataBase === undefined) {
-    if (password.length < 5) {
-      res.status(400);
-      res.send(`Password is too short`);
+  const { firstname, lastname, skin_color, height, email, location, gender, password } = req.body;
+  try {
+    let checkUserQuery = `SELECT * FROM models WHERE email = '${email}'`;
+    let checkInDataBase = await db.get(checkUserQuery);
+    if (checkInDataBase === undefined) {
+      if (password.length < 5) {
+        res.status(400).send("Password is too short");
+      } else {
+        let hashedPassword = await bcrypt.hash(password, 10);
+        let createNewModel = `INSERT INTO models (firstname, lastname, skin_color, height, email, location, gender, password)
+        VALUES ('${firstname}', '${lastname}', '${skin_color}', ${height}, '${email}', '${location}', '${gender}', '${hashedPassword}')`;
+        await db.run(createNewModel);
+        res.status(200).send("Model registered successfully");
+      }
     } else {
-      let hashedPassword = await bcrypt.hash(password, 10);
-      let createNewUser = `INSERT INTO user (username,name,password,gender,location)
-      VALUES ('${username}','${name}','${hashedPassword}','${gender}','${location}')`;
-      let insertInDataBase = await db.run(createNewUser);
-      res.status(200);
-      res.send(`User created successfully`);
+      res.status(400).send("Model already exists");
     }
-  } else {
-    res.status(400);
-    res.send(`User already exists`);
+  } catch (error) {
+    res.status(500).send({ error: "Failed to register model." });
   }
 });
 
+// Endpoint to login a model
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  let getUserDetails = `SELECT * FROM user WHERE username = '${username}'`;
-  let checkInDb = await db.get(getUserDetails);
-  if (checkInDb === undefined) {
-    res.status(400);
-    res.send("Invalid user");
-  } else {
-    const isPasswordMatched = await bcrypt.compare(
-      password,
-      checkInDb.password
-    );
-
-    if (isPasswordMatched) {
-      res.status(200);
-      res.send("Login success!");
+  const { email, password } = req.body;
+  try {
+    let getUserDetails = `SELECT * FROM models WHERE email = '${email}'`;
+    let checkInDb = await db.get(getUserDetails);
+    if (checkInDb === undefined) {
+      res.status(400).send("Invalid email");
     } else {
-      res.status(400);
-      res.send("Invalid password");
+      const isPasswordMatched = await bcrypt.compare(
+        password,
+        checkInDb.password
+      );
+
+      if (isPasswordMatched) {
+        res.status(200).send("Login successful!");
+      } else {
+        res.status(400).send("Invalid password");
+      }
     }
+  } catch (error) {
+    res.status(500).send({ error: "Failed to login model." });
   }
 });
 
+// Endpoint to change model password
 app.put("/change-password", async (req, res) => {
-  let { username, oldPassword, newPassword } = req.body;
-  let getUserDetail = `SELECT * FROM user WHERE username = '${username}'`;
-  let dbResponse = await db.get(getUserDetail);
-  const isPasswordCheck = await bcrypt.compare(
-    oldPassword,
-    dbResponse.password
-  );
-  console.log(isPasswordCheck);
-  let oldPasswordHash = await bcrypt.hash(oldPassword, 10);
-  if (!isPasswordCheck) {
-    res.status(400);
-    res.send(`Invalid current password`);
-  } else {
-    if (newPassword.length < 5) {
-      res.status(400);
-      res.send(`Password is too short`);
+  const { email, oldPassword, newPassword } = req.body;
+  try {
+    let getUserDetail = `SELECT * FROM models WHERE email = '${email}'`;
+    let dbResponse = await db.get(getUserDetail);
+    const isPasswordCheck = await bcrypt.compare(
+      oldPassword,
+      dbResponse.password
+    );
+    if (!isPasswordCheck) {
+      res.status(400).send("Invalid current password");
     } else {
-      let newPasswordHash = await bcrypt.hash(newPassword, 10);
-      let updatePasswordQuery = `UPDATE user SET password = '${newPasswordHash}' WHERE username = '${username}'`;
-      let dbResponse = await db.run(updatePasswordQuery);
-      res.status(200);
-      res.send(`Password updated`);
+      if (newPassword.length < 5) {
+        res.status(400).send("New password is too short");
+      } else {
+        let newPasswordHash = await bcrypt.hash(newPassword, 10);
+        let updatePasswordQuery = `UPDATE models SET password = '${newPasswordHash}' WHERE email = '${email}'`;
+        await db.run(updatePasswordQuery);
+        res.status(200).send("Password updated successfully");
+      }
     }
+  } catch (error) {
+    res.status(500).send({ error: "Failed to update password." });
   }
 });
 

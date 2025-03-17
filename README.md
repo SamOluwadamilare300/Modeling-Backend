@@ -1,84 +1,97 @@
-# Project Name
-
-User Authentication API
+# User Authentication API
 
 ## Description
 
-This project implements a User Authentication API using Node.js, Express.js, and SQLite. The API provides endpoints for user registration, login, and password change. User information is stored in a SQLite database, and passwords are hashed using bcrypt for security.
+This project implements a **User Authentication API** using **Node.js, Express.js, and SQLite**. The API provides endpoints for user registration, login, and password change. User information is securely stored in a **SQLite database**, with passwords hashed using **bcrypt** for added security.
 
 ## Installation
 
-1. Clone the repository: `[git clone https://github.com/username/repository.git](https://github.com/dev-ajithkumar/express-auth-api.git)`
-2. Navigate to the project directory: `cd repository`
-3. Install the dependencies: `npm install`
+1. Clone the repository:  
+   ```sh
+   git clone https://github.com/my_username/repository.git
+   ```
+2. Navigate to the project directory:  
+   ```sh
+   cd repository
+   ```
+3. Install the dependencies:  
+   ```sh
+   npm install
+   ```
 
 ## Database Setup
 
-1. Open the `userData.db` file using an SQLite database management tool.
-2. Run the following SQL query to create the `user` table:
-
-```sql
-CREATE TABLE IF NOT EXISTS user (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    password TEXT NOT NULL,
-    gender TEXT NOT NULL,
-    location TEXT NOT NULL
-);
-```
+1. The database file (`userData.db`) is automatically created when the server starts.
+2. The `models` table is created if it does not already exist.
 
 ## Usage
 
-1. Start the server: `npm start`
-2. Use an API testing tool (e.g., Postman) to send requests to the following endpoints:
+1. Start the server:  
+   ```sh
+   npm start
+   ```
+2. Use an API testing tool like **Postman** or **cURL** to interact with the API endpoints.
 
-### GET /register
+## API Endpoints
 
-- Description: Fetches all users from the database.
-- Response: Array of user objects.
+### **GET /register**
+- **Description:** Fetches all registered users from the database.
+- **Response:** An array of user objects.
 
-### POST /register
+### **POST /register**
+- **Description:** Registers a new user.
+- **Request Body:**
+  ```json
+  {
+    "firstname": "John",
+    "lastname": "Doe",
+    "skin_color": "Brown",
+    "height": 180,
+    "email": "johndoe@example.com",
+    "location": "New York",
+    "gender": "Male",
+    "password": "securepassword"
+  }
+  ```
+- **Response:**
+  - Success: "Model registered successfully"
+  - Error: "Model already exists" or "Password is too short"
 
-- Description: Registers a new user.
-- Request Body: JSON object with the following properties:
-  - `username`: User's username (string, required).
-  - `name`: User's name (string, required).
-  - `password`: User's password (string, required).
-  - `gender`: User's gender (string, required).
-  - `location`: User's location (string, required).
-- Response:
-  - Success: "User created successfully".
-  - Error (User already exists): "User already exists".
-  - Error (Password too short): "Password is too short".
+### **POST /login**
+- **Description:** Authenticates a user.
+- **Request Body:**
+  ```json
+  {
+    "email": "johndoe@example.com",
+    "password": "securepassword"
+  }
+  ```
+- **Response:**
+  - Success: "Login successful!"
+  - Error: "Invalid email" or "Invalid password"
 
-### POST /login
-
-- Description: Authenticates a user.
-- Request Body: JSON object with the following properties:
-  - `username`: User's username (string, required).
-  - `password`: User's password (string, required).
-- Response:
-  - Success: "Login success!".
-  - Error (Invalid user): "Invalid user".
-  - Error (Invalid password): "Invalid password".
-
-### PUT /change-password
-
-- Description: Changes the password for a user.
-- Request Body: JSON object with the following properties:
-  - `username`: User's username (string, required).
-  - `oldPassword`: User's current password (string, required).
-  - `newPassword`: User's new password (string, required).
-- Response:
-  - Success: "Password updated".
-  - Error (Invalid current password): "Invalid current password".
-  - Error (New password too short): "Password is too short".
+### **PUT /change-password**
+- **Description:** Changes the password for a user.
+- **Request Body:**
+  ```json
+  {
+    "email": "johndoe@example.com",
+    "oldPassword": "oldpassword",
+    "newPassword": "newsecurepassword"
+  }
+  ```
+- **Response:**
+  - Success: "Password updated successfully"
+  - Error: "Invalid current password" or "New password is too short"
 
 ## Dependencies
 
-- express: Web framework for Node.js
-- sqlite: SQLite database driver for Node.js
-- sqlite3: SQLite library for Node.js
-- bcrypt: Library for password hashing
-- path: Module for file path manipulation
+- **express** – Web framework for Node.js
+- **sqlite** – SQLite database driver
+- **sqlite3** – SQLite library
+- **bcrypt** – Password hashing library
+- **path** – Module for handling file paths
+
+## License
+This project is open-source and available under the [MIT License](LICENSE).
+
