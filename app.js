@@ -19,7 +19,15 @@ const connectDatabaseWithServer = async () => {
       driver: sqlite3.Database,
     });
 
-    app.use(cors());
+    const corsOptions = {
+      origin: ["http://127.0.0.1:5500"],
+      methods: "GET,POST,PUT,DELETE",
+      allowedHeaders: "Content-Type,Authorization",
+      credentials: true,
+    };
+
+    app.use(cors(corsOptions));
+    app.use(express.json());
 
     // Create models table if it doesn't exist
     await db.run(`
@@ -85,7 +93,7 @@ app.post("/register", async (req, res) => {
       return res.status(400).json({ message: "Model already exists" });
     }
   } catch (error) {
-    return res.status(500).json({ error: "Failed to register model." });
+    return res.status(500).json({ message: "Failed to register model." });
   }
 });
 
@@ -93,24 +101,20 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    let getUserDetails = `SELECT * FROM models WHERE email = '${email}'`;
-    let checkInDb = await db.get(getUserDetails);
-    if (checkInDb === undefined) {
-      res.status(400).send("Invalid email");
+    let getUserDetails = `SELECT * FROM models WHERE email = ?`;
+    let checkInDb = await db.get(getUserDetails, [email]);
+    if (!checkInDb) {
+      return res.status(400).json({ message: "Invalid email" });
     } else {
-      const isPasswordMatched = await bcrypt.compare(
-        password,
-        checkInDb.password
-      );
-
+      const isPasswordMatched = await bcrypt.compare(password, checkInDb.password);
       if (isPasswordMatched) {
-        res.status(200).send("Login successful!");
+        return res.status(200).json({ message: "Login successful!" });
       } else {
-        res.status(400).send("Invalid password");
+        return res.status(400).json({ message: "Invalid password" });
       }
     }
   } catch (error) {
-    res.status(500).send({ error: "Failed to login model." });
+    return res.status(500).json({ message: "Failed to login model." });
   }
 });
 
@@ -118,26 +122,27 @@ app.post("/login", async (req, res) => {
 app.put("/change-password", async (req, res) => {
   const { email, oldPassword, newPassword } = req.body;
   try {
-    let getUserDetail = `SELECT * FROM models WHERE email = '${email}'`;
-    let dbResponse = await db.get(getUserDetail);
-    const isPasswordCheck = await bcrypt.compare(
-      oldPassword,
-      dbResponse.password
-    );
+    let getUserDetail = `SELECT * FROM models WHERE email = ?`;
+    let dbResponse = await db.get(getUserDetail, [email]);
+    if (!dbResponse) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+
+    const isPasswordCheck = await bcrypt.compare(oldPassword, dbResponse.password);
     if (!isPasswordCheck) {
-      res.status(400).send("Invalid current password");
+      return res.status(400).json({ message: "Invalid current password" });
     } else {
       if (newPassword.length < 5) {
-        res.status(400).send("New password is too short");
+        return res.status(400).json({ message: "New password is too short" });
       } else {
         let newPasswordHash = await bcrypt.hash(newPassword, 10);
-        let updatePasswordQuery = `UPDATE models SET password = '${newPasswordHash}' WHERE email = '${email}'`;
-        await db.run(updatePasswordQuery);
-        res.status(200).send("Password updated successfully");
+        let updatePasswordQuery = `UPDATE models SET password = ? WHERE email = ?`;
+        await db.run(updatePasswordQuery, [newPasswordHash, email]);
+        return res.status(200).json({ message: "Password updated successfully" });
       }
     }
   } catch (error) {
-    res.status(500).send({ error: "Failed to update password." });
+    return res.status(500).json({ message: "Failed to update password." });
   }
 });
 
