@@ -20,11 +20,11 @@ const connectDatabaseWithServer = async () => {
     });
 
     const corsOptions = {
-      origin: ["http://127.0.0.1:5500", "https://modeling-client.vercel.app/"],
-      methods: "GET,POST,PUT,DELETE",
-      allowedHeaders: "Content-Type,Authorization",
-      credentials: true,
-    };
+      origin: ["http://127.0.0.1:5500", "https://modeling-client.vercel.app"], // Allowed origins
+      methods: "GET,POST,PUT,DELETE", // Allowed HTTP methods
+      allowedHeaders: "Content-Type,Authorization", // Allowed headers
+      credentials: true, // Allow credentials (cookies, authorization headers)
+  };
 
     app.use(cors(corsOptions));
     app.use(express.json());
